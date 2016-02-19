@@ -9,6 +9,7 @@ namespace NeuralNetwork.Classes
 		#region -- Properties --
 		private Layer InputLayer { get; set; }
 		private Layer HiddenLayer { get; set; }
+        private Layer HiddenLayer2 { get; set; }
 		private Layer OutputLayer { get; set; }
 		private int MaxEpochs { get; set; }
 		#endregion
@@ -18,6 +19,7 @@ namespace NeuralNetwork.Classes
 		{
 			InputLayer = new Layer();
 			HiddenLayer = new Layer();
+            HiddenLayer2 = new Layer();
 			OutputLayer = new Layer();
 			MaxEpochs = maxEpochs;
 
@@ -35,8 +37,16 @@ namespace NeuralNetwork.Classes
 				HiddenLayer.Neurons.Add(neuron);
 			}
 
-			//Setup Output Layer
-			for (var i = 0; i < numOutputParameters; i++)
+            //Setup 2nd Hidden Layer
+            for (var i = 0; i < numNeuronsInHiddenLayer; i++)
+            {
+                var neuron = new Neuron(numInputParameters);
+                neuron.RandomizeWeights();
+                HiddenLayer2.Neurons.Add(neuron);
+            }
+
+            //Setup Output Layer
+            for (var i = 0; i < numOutputParameters; i++)
 			{
 				var neuron = new Neuron(HiddenLayer.Neurons.Count);
 				neuron.RandomizeWeights();
@@ -67,11 +77,16 @@ namespace NeuralNetwork.Classes
 					{
 						neuron.Inputs = InputLayer.Neurons.Select(x => x.Output).ToArray();
 					}
+                    //From Hidden Layer to 2nd Hidden Layer
+                    foreach (var neuron in HiddenLayer2.Neurons)
+                    {
+                        neuron.Inputs = HiddenLayer.Neurons.Select(x => x.Output).ToArray();
+                    }
 
-					//Output Layer
-					foreach (var neuron in OutputLayer.Neurons)
+                    //Output Layer
+                    foreach (var neuron in OutputLayer.Neurons)
 					{
-						neuron.Inputs = HiddenLayer.Neurons.Select(x => x.Output).ToArray();
+						neuron.Inputs = HiddenLayer2.Neurons.Select(x => x.Output).ToArray();
 						neuron.Error = Sigmoid.Derivative(neuron.Output) * (dataSet.Results[OutputLayer.Neurons.IndexOf(neuron)] - neuron.Output);
 						neuron.AdjustWeights();
 
@@ -86,9 +101,15 @@ namespace NeuralNetwork.Classes
 
 		private void BackPropagate(Neuron outputNeuron)
 		{
-			for (var neuronIndex = 0; neuronIndex < HiddenLayer.Neurons.Count; neuronIndex++)
+            for(var neuronIndex = 0; neuronIndex < HiddenLayer.Neurons.Count; neuronIndex++)
 			{
-				var neuron = HiddenLayer.Neurons[neuronIndex];
+                var neuron = HiddenLayer.Neurons[neuronIndex];
+                neuron.Error = Sigmoid.Derivative(neuron.Output) * outputNeuron.Error * outputNeuron.Weights[neuronIndex];
+                neuron.AdjustWeights();
+            }
+            for (var neuronIndex = 0; neuronIndex < HiddenLayer2.Neurons.Count; neuronIndex++)
+			{
+				var neuron = HiddenLayer2.Neurons[neuronIndex];
 				neuron.Error = Sigmoid.Derivative(neuron.Output) * outputNeuron.Error * outputNeuron.Weights[neuronIndex];
 				neuron.AdjustWeights();
 			}
@@ -115,10 +136,15 @@ namespace NeuralNetwork.Classes
 				neuron.Inputs = InputLayer.Neurons.Select(x => x.Output).ToArray();
 			}
 
-			//Get Output Neuron Outputs
-			foreach (var neuron in OutputLayer.Neurons)
+            //Propagate Forward
+            foreach (var neuron in HiddenLayer2.Neurons)
+            {
+                neuron.Inputs = HiddenLayer.Neurons.Select(x => x.Output).ToArray();
+            }
+            //Get Output Neuron Outputs
+            foreach (var neuron in OutputLayer.Neurons)
 			{
-				neuron.Inputs = HiddenLayer.Neurons.Select(x => x.Output).ToArray();
+				neuron.Inputs = HiddenLayer2.Neurons.Select(x => x.Output).ToArray();
 				results[OutputLayer.Neurons.IndexOf(neuron)] = neuron.Output;
 			}
 

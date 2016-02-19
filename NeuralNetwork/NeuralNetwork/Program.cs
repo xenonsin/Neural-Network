@@ -1,21 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using NeuralNetwork.Classes;
+using CsvHelper;
 
 namespace NeuralNetwork
 {
 	internal class Program
 	{
 		#region -- Constants --
-		private const int MaxEpochs = 5000;
+		private const int MaxEpochs = 20000;
 		#endregion
 
 		#region -- Variables --
 		private static int _numInputParameters;
 		private static int _numHiddenLayerNeurons;
-		private static int _numOutputParameters;
+        private static int _numOutputParameters;
 		private static Network _network;
 		private static List<DataSet> _dataSets; 
 		#endregion
@@ -23,7 +26,7 @@ namespace NeuralNetwork
 		#region -- Main --
 		private static void Main()
 		{
-			Greet();
+			//Greet();
 			SetupNetwork();
 			TrainNetwork();
 			VerifyTraining();
@@ -106,9 +109,9 @@ namespace NeuralNetwork
 
 		private static void SetupNetwork()
 		{
-			if (GetBool("Do you want to read from the space delimited data.txt file? (yes/no/exit)"))
+			if (GetBool("Do you want to train the network using the nominal-data.csv file? (yes/no/exit)"))
 			{
-				SetupFromFile();
+				SetupFromCSVFile();
 			}
 			else
 			{
@@ -228,7 +231,47 @@ namespace NeuralNetwork
 		#endregion
 
 		#region -- I/O Help --
-		private static void SetupFromFile()
+
+	    private static void SetupFromCSVFile()
+	    {
+            _dataSets = new List<DataSet>();
+	        _numInputParameters = 10;
+	        _numHiddenLayerNeurons = 10;
+	        _numOutputParameters = 1;
+            List<double> values = new List<double>();
+	        
+	        int numberOfInputChunks = 0;
+	        using (var sr = new StreamReader("test-data.csv"))
+	        {
+	            var reader = new CsvReader(sr);
+                
+	            while (reader.Read())
+	            {
+	                var doubleField = reader.GetField<double>(0); // 34
+                    values.Add(doubleField);
+	            }
+
+	            numberOfInputChunks = (values.Count + 1)/_numInputParameters;
+	        }
+
+            int dataIndex = 0;
+            //BUG: If values.count does not divide evenly with 2000, it throws an error because the dataIndex would go out of range.
+            for (int i = 0; i < numberOfInputChunks; i++)
+            {
+                var val = new double[_numInputParameters];
+                for (int j = 0; j < _numInputParameters; j++)
+                {
+                    val[j] = values[dataIndex];
+                    dataIndex++;
+                }
+
+                var expectedResults = new int[_numOutputParameters];
+                expectedResults[0] = 1;
+
+                _dataSets.Add(new DataSet(val, expectedResults));
+            }
+	    }
+		private static void SetupFromTxtFile()
 		{
 			_dataSets = new List<DataSet>();
 			var fileContent = File.ReadAllText("data.txt");
